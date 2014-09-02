@@ -31,20 +31,18 @@
 
 (defn ^:private client-listen!
   [socket screen-or-fn]
-  (try
-    (loop []
-      (let [topic (.recvStr socket)
-            message (read-edn (.recvStr socket))]
-        (when (and topic message)
-          (if (map? screen-or-fn)
-            (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
-                  options (get-obj screen-or-fn :options)]
-              (execute-fn! (:on-network-receive options)
-                           :topic (keyword topic)
-                           :message message))
-            (screen-or-fn (keyword topic) message))
-          (recur))))
-    (catch Exception _)))
+  (loop []
+    (let [topic (.recvStr socket)
+          message (read-edn (.recvStr socket))]
+      (when (and topic message)
+        (if (map? screen-or-fn)
+          (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
+                options (get-obj screen-or-fn :options)]
+            (execute-fn! (:on-network-receive options)
+                         :topic (keyword topic)
+                         :message message))
+          (screen-or-fn (keyword topic) message))
+        (recur)))))
 
 (defn ^:private server-listen!
   [send-socket receive-socket]
