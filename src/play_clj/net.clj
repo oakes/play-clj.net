@@ -72,8 +72,7 @@
   (if (map? socket)
     (do
       (disconnect! (get-obj socket :network :sender))
-      (disconnect! (get-obj socket :network :receiver))
-      (future-cancel (get-obj socket :network :receiver-thread)))
+      (disconnect! (get-obj socket :network :receiver)))
     (.destroySocket @context socket))
   nil)
 
