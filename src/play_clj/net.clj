@@ -30,19 +30,19 @@
     (catch Exception _)))
 
 (defn ^:private client-listen!
-  [socket screen]
+  [socket screen-or-fn]
   (try
     (loop []
       (let [topic (.recvStr socket)
             message (read-edn (.recvStr socket))]
         (when (and topic message)
-          (if (map? screen)
-            (let [execute-fn! (get-obj screen :execute-fn-on-gl!)
-                  options (get-obj screen :options)]
+          (if (map? screen-or-fn)
+            (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
+                  options (get-obj screen-or-fn :options)]
               (execute-fn! (:on-network-receive options)
                            :topic (keyword topic)
                            :message message))
-            (screen (keyword topic) message))
+            (screen-or-fn (keyword topic) message))
           (recur))))
     (catch Exception _)))
 
@@ -56,39 +56,33 @@
     (recur)))
 
 (defn subscribe!
-  [socket & topics]
+  [client & topics]
   (doseq [t topics]
-    (.subscribe (or (get-obj socket :network :receiver) socket)
-      (get-bytes t))))
+    (.subscribe (get-obj client :network :receiver) (get-bytes t))))
 
 (defn unsubscribe!
-  [socket & topics]
+  [client & topics]
   (doseq [t topics]
-    (.unsubscribe (or (get-obj socket :network :receiver) socket)
-      (get-bytes t))))
+    (.unsubscribe (get-obj client :network :receiver) (get-bytes t))))
 
 (defn disconnect!
-  ([socket]
-    (let [context (get-obj socket :network :context)]
-      (disconnect! context (get-obj socket :network :sender))
-      (disconnect! context (get-obj socket :network :receiver)))
-    (.interrupt (get-obj socket :network :receiver-thread)))
-  ([context socket]
-    (.destroySocket context socket)
-    nil))
+  [client]
+  (let [context (get-obj client :network :context)]
+    (.destroySocket context (get-obj client :network :sender))
+    (.destroySocket context (get-obj client :network :receiver)))
+  (.interrupt (get-obj client :network :thread)))
 
 (defn broadcast!
-  [socket topic message]
-  (.send (or (get-obj socket :network :sender) socket)
-    (pr-str [topic message]))
+  [client topic message]
+  (.send (get-obj client :network :sender) (pr-str [topic message]))
   nil)
 
 (defn client
-  ([screen]
-    (client screen []))
-  ([screen topics]
-    (client screen topics client-send-address client-receive-address))
-  ([screen topics send-address receive-address]
+  ([screen-or-fn]
+    (client screen-or-fn []))
+  ([screen-or-fn topics]
+    (client screen-or-fn topics client-send-address client-receive-address))
+  ([screen-or-fn topics send-address receive-address]
     (let [context (ZContext.)
           push (.createSocket context ZMQ/PUSH)
           sub (.createSocket context ZMQ/SUB)]
@@ -96,7 +90,7 @@
        :receiver (doto sub
                    (.connect receive-address)
                    (#(apply subscribe! % topics)))
-       :receiver-thread (doto (Thread. #(client-listen! sub screen)) .start)
+       :thread (doto (Thread. #(client-listen! sub screen-or-fn)) .start)
        :context context})))
 
 (defn server
@@ -108,7 +102,7 @@
           pull (.createSocket context ZMQ/PULL)]
       {:sender (doto pub (.bind send-address))
        :receiver (doto pull (.bind receive-address))
-       :receiver-thread (doto (Thread. #(server-listen! pub pull)) .start)
+       :thread (doto (Thread. #(server-listen! pub pull)) .start)
        :context context})))
 
 (defn -main
