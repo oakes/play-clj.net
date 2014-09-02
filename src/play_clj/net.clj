@@ -55,14 +55,6 @@
                 (.send send-socket message)))
             (recur))))
 
-(defn ^:private sender
-  []
-  (.createSocket @context ZMQ/PUSH))
-
-(defn ^:private receiver
-  []
-  (.createSocket @context ZMQ/SUB))
-
 (defn subscribe!
   [socket & topics]
   (doseq [t topics]
@@ -93,8 +85,8 @@
   ([screen topics]
     (client screen topics client-send-address client-receive-address))
   ([screen topics send-address receive-address]
-    (let [push (sender)
-          sub (receiver)]
+    (let [push (.createSocket @context ZMQ/PUSH)
+          sub (.createSocket @context ZMQ/SUB)]
       {:sender (doto push (.connect send-address))
        :receiver (doto sub
                    (.connect receive-address)
