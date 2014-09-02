@@ -52,7 +52,7 @@
             (let [[topic message] (read-edn (.recvStr receive-socket))]
               (when (and topic message)
                 (.sendMore send-socket (name topic))
-                (.send send-socket message)))
+                (.send send-socket (pr-str message))))
             (recur))))
 
 (defn subscribe!
