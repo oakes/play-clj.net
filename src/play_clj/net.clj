@@ -29,8 +29,6 @@
   (try (edn/read-string s)
     (catch Exception _)))
 
-(def ^:private context (atom nil))
-
 (defn ^:private client-listen!
   [socket screen]
   (try
@@ -70,14 +68,14 @@
       (get-bytes t))))
 
 (defn disconnect!
-  [socket]
-  (if (map? socket)
-    (do
-      (disconnect! (get-obj socket :network :sender))
-      (disconnect! (get-obj socket :network :receiver))
-      (.interrupt (get-obj socket :network :receiver-thread)))
-    (.destroySocket @context socket))
-  nil)
+  ([socket]
+    (let [context (get-obj socket :network :context)]
+      (disconnect! context (get-obj socket :network :sender))
+      (disconnect! context (get-obj socket :network :receiver)))
+    (.interrupt (get-obj socket :network :receiver-thread)))
+  ([context socket]
+    (.destroySocket context socket)
+    nil))
 
 (defn broadcast!
   [socket topic message]
@@ -89,25 +87,29 @@
   ([screen topics]
     (client screen topics client-send-address client-receive-address))
   ([screen topics send-address receive-address]
-    (reset! context (ZContext.))
-    (let [push (.createSocket @context ZMQ/PUSH)
-          sub (.createSocket @context ZMQ/SUB)]
+    (let [context (ZContext.)
+          push (.createSocket context ZMQ/PUSH)
+          sub (.createSocket context ZMQ/SUB)]
       {:sender (doto push (.connect send-address))
        :receiver (doto sub
                    (.connect receive-address)
                    (#(apply subscribe! % topics)))
-       :receiver-thread (doto (Thread. #(client-listen! sub screen)) .start)})))
+       :receiver-thread (doto (Thread. #(client-listen! sub screen))
+                          .start)
+       :context context})))
 
 (defn server
   ([]
     (server server-send-address server-receive-address))
   ([send-address receive-address]
-    (reset! context (ZContext.))
-    (let [pub (.createSocket @context ZMQ/PUB)
-          pull (.createSocket @context ZMQ/PULL)]
+    (let [context (ZContext.)
+          pub (.createSocket context ZMQ/PUB)
+          pull (.createSocket context ZMQ/PULL)]
       {:sender (doto pub (.bind send-address))
        :receiver (doto pull (.bind receive-address))
-       :receiver-thread (doto (Thread. #(server-listen! pub pull)) .start)})))
+       :receiver-thread (doto (Thread. #(server-listen! pub pull))
+                          .start)
+       :context context})))
 
 (defn -main
   [& args]
