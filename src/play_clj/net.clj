@@ -13,10 +13,11 @@
   (throw (Exception. (str "The keyword " k " is not found."))))
 
 (defn ^:private get-obj
-  [obj k]
+  [obj & ks]
   (if (map? obj)
-    (or (get obj k)
-        (throw-key-not-found k))
+    (or (get-in obj ks)
+        (get obj (last ks))
+        (throw-key-not-found (last ks)))
     obj))
 
 (defn ^:private get-bytes
@@ -25,99 +26,91 @@
 
 (defn ^:parse read-edn
   [s]
-  (try (some-> s edn/read-string)
+  (try (edn/read-string s)
     (catch Exception _)))
 
 (def context (delay (ZContext.)))
-(def futures (atom {}))
-
-(defn receiver?
-  [socket]
-  (= ZMQ/SUB (.getType socket)))
-
-(defn sender?
-  [socket]
-  (= ZMQ/PUSH (.getType socket)))
 
 (defn subscribe!
-  [socket topic]
-  (doseq [s (if (map? socket)
-              (filter receiver? (get-obj socket :sockets))
-              [socket])]
-    (.subscribe s (get-bytes topic))))
+  [socket & topics]
+  (doseq [t topics]
+    (.subscribe (or (get-obj socket :network :receiver) socket)
+      (get-bytes t))))
 
 (defn unsubscribe!
-  [socket topic]
-  (doseq [s (if (map? socket)
-              (filter receiver? (get-obj socket :sockets))
-              [socket])]
-    (.unsubscribe s (get-bytes topic))))
-
-(defn broadcast!
-  [socket topic message]
-  (doseq [s (if (map? socket)
-              (filter sender? (get-obj socket :sockets))
-              [socket])]
-    (.send s (pr-str [topic message]))))
+  [socket & topics]
+ (doseq [t topics]
+   (.unsubscribe (or (get-obj socket :network :receiver) socket)
+     (get-bytes t))))
 
 (defn disconnect!
   [socket]
-  (doseq [s (if (map? socket)
-              (get-obj socket :sockets)
-              [socket])]
-    (.destroySocket @context s)
-    (when-let [f (get @futures s)]
-      (future-cancel f)
-      (swap! futures dissoc s))))
+  (if (map? socket)
+    (do
+      (disconnect! (get-obj socket :network :sender))
+      (disconnect! (get-obj socket :network :receiver))
+      (future-cancel (get-obj socket :network :receiver-thread)))
+    (.destroySocket @context socket)))
+
+(defn broadcast!
+  [socket topic message]
+  (.send (or (get-obj socket :network :sender) socket)
+    (pr-str [topic message])))
+
+(defn client-listen!
+  [socket callback]
+  (future (loop []
+            (let [topic (.recvStr socket)
+                  message (read-edn (.recvStr socket))]
+              (when (and topic message)
+                (if (map? callback)
+                  (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
+                        options (get-obj callback :options)]
+                    (execute-fn! (:on-receive options)
+                                 :topic (keyword topic)
+                                 :message message))
+                  (callback (keyword topic) message))
+                (recur))))))
+
+(defn server-listen!
+  [send-socket receive-socket]
+  (future (loop []
+            (let [[topic message] (read-edn (.recvStr receive-socket))]
+              (when (and topic message)
+                (.sendMore send-socket (name topic))
+                (.send send-socket message)))
+            (recur))))
+
+(defn sender
+  []
+  (.createSocket @context ZMQ/PUSH))
+
+(defn receiver
+  []
+  (.createSocket @context ZMQ/SUB))
+
+(defn client
+  ([screen topics]
+    (client screen topics client-send-address client-receive-address))
+  ([screen topics send-address receive-address]
+    (let [push (sender)
+          sub (receiver)]
+      {:sender (doto push (.connect send-address))
+       :receiver (doto sub
+                   (.connect receive-address)
+                   (#(apply subscribe! % topics)))
+       :receiver-thread (client-listen! sub screen)})))
 
 (defn server
   ([]
     (server server-send-address server-receive-address))
-  ([server-send-address server-receive-address]
+  ([send-address receive-address]
     (let [pub (.createSocket @context ZMQ/PUB)
           pull (.createSocket @context ZMQ/PULL)]
-      (.bind pub server-send-address)
-      (.bind pull server-receive-address)
-      (loop []
-        (let [[topic message] (read-edn (.recvStr pull))]
-          (when (and topic message)
-            (.sendMore pub (name topic))
-            (.send pub message)))
-        (recur)))))
-
-(defn sender
-  ([]
-    (sender client-send-address))
-  ([address]
-    (doto (.createSocket @context ZMQ/PUSH)
-      (.connect address))))
-
-(defn receiver
-  ([callback topics]
-    (receiver callback client-receive-address topics))
-  ([callback topics address]
-    (let [socket (doto (.createSocket @context ZMQ/SUB)
-                   (.connect address))]
-      (doseq [t topics]
-        (subscribe! socket t))
-      (->> (loop []
-             (let [topic (.recvStr socket)
-                   message (read-edn (.recvStr socket))]
-               (when (and topic message)
-                 (if (map? callback)
-                   (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
-                         options (get-obj callback :options)]
-                     (execute-fn! (:on-receive options)
-                                  :topic (keyword topic)
-                                  :message message))
-                   (callback (keyword topic) message))
-                 (recur))))
-           future
-           (swap! futures assoc socket))
-      socket)))
+      {:sender (doto pub (.bind send-address))
+       :receiver (doto pull (.bind receive-address))
+       :receiver-thread (server-listen! pub pull)})))
 
 (defn -main
   [& args]
-  (future (server))
-  (subscribe! (receiver println [] server-send-address) :test1)
-  (broadcast! (sender server-receive-address) :test1 "Test!"))
+  (server))
