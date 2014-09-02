@@ -63,9 +63,9 @@
 
 (defn unsubscribe!
   [socket & topics]
- (doseq [t topics]
-   (.unsubscribe (or (get-obj socket :network :receiver) socket)
-     (get-bytes t))))
+  (doseq [t topics]
+    (.unsubscribe (or (get-obj socket :network :receiver) socket)
+      (get-bytes t))))
 
 (defn disconnect!
   [socket]
@@ -74,12 +74,14 @@
       (disconnect! (get-obj socket :network :sender))
       (disconnect! (get-obj socket :network :receiver))
       (future-cancel (get-obj socket :network :receiver-thread)))
-    (.destroySocket @context socket)))
+    (.destroySocket @context socket))
+  nil)
 
 (defn broadcast!
   [socket topic message]
   (.send (or (get-obj socket :network :sender) socket)
-    (pr-str [topic message])))
+    (pr-str [topic message]))
+  nil)
 
 (defn client
   ([screen topics]
