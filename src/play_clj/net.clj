@@ -39,14 +39,14 @@
   [socket]
   (= ZMQ/PUSH (.getType socket)))
 
-(defn sub!
+(defn subscribe!
   [socket topic]
   (doseq [s (if (map? socket)
               (filter receiver? (get-obj socket :sockets))
               [socket])]
     (.subscribe s (get-bytes topic))))
 
-(defn unsub!
+(defn unsubscribe!
   [socket topic]
   (doseq [s (if (map? socket)
               (filter receiver? (get-obj socket :sockets))
@@ -99,7 +99,7 @@
     (let [socket (doto (.createSocket @context ZMQ/SUB)
                    (.connect address))]
       (doseq [t topics]
-        (sub! socket t))
+        (subscribe! socket t))
       (->> (loop []
              (let [topic (.recvStr socket)
                    message (recv-read socket)]
@@ -119,5 +119,5 @@
 (defn -main
   [& args]
   (future (server))
-  (sub! (receiver println [] server-send-address) :test1)
+  (subscribe! (receiver println [] server-send-address) :test1)
   (broadcast! (sender server-receive-address) :test1 "Test!"))
