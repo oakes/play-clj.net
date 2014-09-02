@@ -32,18 +32,18 @@
 (def ^:private context (delay (ZContext.)))
 
 (defn ^:private client-listen!
-  [socket callback]
+  [socket screen]
   (future (loop []
             (let [topic (.recvStr socket)
                   message (read-edn (.recvStr socket))]
               (when (and topic message)
-                (if (map? callback)
-                  (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
-                        options (get-obj callback :options)]
+                (if (map? screen)
+                  (let [execute-fn! (get-obj screen :execute-fn-on-gl!)
+                        options (get-obj screen :options)]
                     (execute-fn! (:on-receive options)
                                  :topic (keyword topic)
                                  :message message))
-                  (callback (keyword topic) message))
+                  (screen (keyword topic) message))
                 (recur))))))
 
 (defn ^:private server-listen!
