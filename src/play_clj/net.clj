@@ -24,12 +24,44 @@
   [k]
   (.getBytes (name k) ZMQ/CHARSET))
 
-(defn ^:parse read-edn
+(defn ^:private read-edn
   [s]
   (try (edn/read-string s)
     (catch Exception _)))
 
-(def context (delay (ZContext.)))
+(def ^:private context (delay (ZContext.)))
+
+(defn ^:private client-listen!
+  [socket callback]
+  (future (loop []
+            (let [topic (.recvStr socket)
+                  message (read-edn (.recvStr socket))]
+              (when (and topic message)
+                (if (map? callback)
+                  (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
+                        options (get-obj callback :options)]
+                    (execute-fn! (:on-receive options)
+                                 :topic (keyword topic)
+                                 :message message))
+                  (callback (keyword topic) message))
+                (recur))))))
+
+(defn ^:private server-listen!
+  [send-socket receive-socket]
+  (future (loop []
+            (let [[topic message] (read-edn (.recvStr receive-socket))]
+              (when (and topic message)
+                (.sendMore send-socket (name topic))
+                (.send send-socket message)))
+            (recur))))
+
+(defn ^:private sender
+  []
+  (.createSocket @context ZMQ/PUSH))
+
+(defn ^:private receiver
+  []
+  (.createSocket @context ZMQ/SUB))
 
 (defn subscribe!
   [socket & topics]
@@ -56,38 +88,6 @@
   [socket topic message]
   (.send (or (get-obj socket :network :sender) socket)
     (pr-str [topic message])))
-
-(defn client-listen!
-  [socket callback]
-  (future (loop []
-            (let [topic (.recvStr socket)
-                  message (read-edn (.recvStr socket))]
-              (when (and topic message)
-                (if (map? callback)
-                  (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
-                        options (get-obj callback :options)]
-                    (execute-fn! (:on-receive options)
-                                 :topic (keyword topic)
-                                 :message message))
-                  (callback (keyword topic) message))
-                (recur))))))
-
-(defn server-listen!
-  [send-socket receive-socket]
-  (future (loop []
-            (let [[topic message] (read-edn (.recvStr receive-socket))]
-              (when (and topic message)
-                (.sendMore send-socket (name topic))
-                (.send send-socket message)))
-            (recur))))
-
-(defn sender
-  []
-  (.createSocket @context ZMQ/PUSH))
-
-(defn receiver
-  []
-  (.createSocket @context ZMQ/SUB))
 
 (defn client
   ([screen topics]
