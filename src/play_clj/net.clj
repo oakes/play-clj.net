@@ -23,9 +23,9 @@
   [k]
   (.getBytes (name k) ZMQ/CHARSET))
 
-(defn ^:parse recv-read
-  [socket]
-  (try (some-> (.recvStr socket) edn/read-string)
+(defn ^:parse read-edn
+  [s]
+  (try (some-> s edn/read-string)
     (catch Exception _)))
 
 (def context (delay (ZContext.)))
@@ -79,7 +79,7 @@
       (.bind pub server-send-address)
       (.bind pull server-receive-address)
       (loop []
-        (let [[topic message] (recv-read pull)]
+        (let [[topic message] (read-edn (.recvStr pull))]
           (when (and topic message)
             (.sendMore pub (name topic))
             (.send pub message)))
@@ -102,7 +102,7 @@
         (subscribe! socket t))
       (->> (loop []
              (let [topic (.recvStr socket)
-                   message (recv-read socket)]
+                   message (read-edn (.recvStr socket))]
                (when (and topic message)
                  (if (map? callback)
                    (let [execute-fn! (get-obj callback :execute-fn-on-gl!)
