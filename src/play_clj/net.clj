@@ -8,6 +8,9 @@
 (def ^:private client-send-address server-receive-address)
 (def ^:private client-receive-address server-send-address)
 
+(def ^:private max-message-size 2048)
+(def ^:private high-water-mark 100)
+
 (defn ^:private throw-key-not-found
   [k]
   (throw (Exception. (str "The keyword " k " is not found."))))
@@ -72,7 +75,13 @@
 
 (defn broadcast!
   [client topic message]
-  (.send (get-obj client :network :sender) (pr-str [topic message]))
+  (let [encoded-message (pr-str [topic message])]
+    (if (> (count encoded-message) max-message-size)
+      (throw (Exception. (str "Message is too large to broadcast: "
+                              (count encoded-message)
+                              " > "
+                              max-message-size)))
+      (.send (get-obj client :network :sender) encoded-message)))
   nil)
 
 (defn client
@@ -98,6 +107,8 @@
     (let [context (ZContext.)
           pub (.createSocket context ZMQ/PUB)
           pull (.createSocket context ZMQ/PULL)]
+      (.setMaxMsgSize pull max-message-size)
+      (.setHWM pull high-water-mark)
       {:sender (doto pub (.bind send-address))
        :receiver (doto pull (.bind receive-address))
        :thread (doto (Thread. #(server-listen! pub pull)) .start)
