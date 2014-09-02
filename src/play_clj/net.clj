@@ -84,6 +84,8 @@
   nil)
 
 (defn client
+  ([screen]
+    (client screen []))
   ([screen topics]
     (client screen topics client-send-address client-receive-address))
   ([screen topics send-address receive-address]
