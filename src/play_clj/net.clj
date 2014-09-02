@@ -39,7 +39,7 @@
           (if (map? screen)
             (let [execute-fn! (get-obj screen :execute-fn-on-gl!)
                   options (get-obj screen :options)]
-              (execute-fn! (:on-receive options)
+              (execute-fn! (:on-network-receive options)
                            :topic (keyword topic)
                            :message message))
             (screen (keyword topic) message))
