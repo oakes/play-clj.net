@@ -96,8 +96,7 @@
        :receiver (doto sub
                    (.connect receive-address)
                    (#(apply subscribe! % topics)))
-       :receiver-thread (doto (Thread. #(client-listen! sub screen))
-                          .start)
+       :receiver-thread (doto (Thread. #(client-listen! sub screen)) .start)
        :context context})))
 
 (defn server
@@ -109,8 +108,7 @@
           pull (.createSocket context ZMQ/PULL)]
       {:sender (doto pub (.bind send-address))
        :receiver (doto pull (.bind receive-address))
-       :receiver-thread (doto (Thread. #(server-listen! pub pull))
-                          .start)
+       :receiver-thread (doto (Thread. #(server-listen! pub pull)) .start)
        :context context})))
 
 (defn -main
