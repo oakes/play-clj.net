@@ -22,8 +22,8 @@
     obj))
 
 (defn ^:private get-bytes
-  [k]
-  (.getBytes (name k) ZMQ/CHARSET))
+  [s]
+  (.getBytes s ZMQ/CHARSET))
 
 (defn ^:private read-edn
   [s]
@@ -57,7 +57,7 @@
 (defn ^:private subscribe!
   [client topics]
   (doseq [t topics]
-    (.subscribe (get-obj client :network :receiver) (get-bytes t))))
+    (.subscribe (get-obj client :network :receiver) (get-bytes (name t)))))
 
 (defn disconnect!
   [client]
@@ -69,7 +69,7 @@
 (defn broadcast!
   [client topic message]
   (let [encoded-message (pr-str [topic message])
-        message-size (count (.getBytes encoded-message "UTF-8"))]
+        message-size (count (get-bytes encoded-message))]
     (if (> message-size max-message-size)
       (throw (Exception. (str "Message is too large to broadcast: "
                               message-size
