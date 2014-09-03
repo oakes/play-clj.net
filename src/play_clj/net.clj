@@ -7,8 +7,7 @@
 (def ^:private server-receive-address "tcp://localhost:4708")
 (def ^:private client-send-address server-receive-address)
 (def ^:private client-receive-address server-send-address)
-
-(def max-message-size 2048)
+(def ^:private max-message-size 2048)
 
 (defn ^:private throw-key-not-found
   [k]
