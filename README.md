@@ -1,6 +1,6 @@
 ## Introduction
 
-A library for painlessly adding networking support to play-clj games.
+A library for painlessly adding networking support to play-clj games. No documentation yet, but there is an [example game](https://github.com/oakes/play-clj-examples/tree/master/minicraft-online).
 
 ## Licensing
 
