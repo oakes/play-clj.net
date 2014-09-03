@@ -1,6 +1,6 @@
 ## Introduction
 
-...
+A library for painlessly adding networking support to play-clj games.
 
 ## Licensing
 
