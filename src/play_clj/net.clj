@@ -21,7 +21,7 @@
         (throw-key-not-found (last ks)))
     obj))
 
-(defn ^:private get-bytes
+(defn ^:private str->bytes
   [s]
   (.getBytes s ZMQ/CHARSET))
 
@@ -58,10 +58,25 @@
       (recur))
     (catch Exception _)))
 
-(defn ^:private subscribe!
-  [client topics]
+(defn subscribe!
+  "Subscribes `client` the given `topics`. The `client` is a hash map returned
+by the client function, or a play-clj screen map that contains a client hash map
+associated with the :network key.
+
+    (subscribe! screen :my-game-level-2)"
+  [client & topics]
   (doseq [t topics]
-    (.subscribe (get-obj client :network :receiver) (get-bytes (name t)))))
+    (.subscribe (get-obj client :network :receiver) (str->bytes (name t)))))
+
+(defn unsubscribe!
+  "Unsubscribes `client` the given `topics`. The `client` is a hash map returned
+by the client function, or a play-clj screen map that contains a client hash map
+associated with the :network key.
+
+    (unsubscribe! screen :my-game-level-2)"
+  [client & topics]
+  (doseq [t topics]
+    (.unsubscribe (get-obj client :network :receiver) (str->bytes t))))
 
 (defn disconnect!
   "Closes the sockets and interrupts the receiver thread. The `client` is a hash
@@ -86,7 +101,7 @@ with the :network key.
       (broadcast! screen :my-game-position {:x 10 :y 5}))"
   [client topic message]
   (let [encoded-message (pr-str [topic message])
-        message-size (count (get-bytes encoded-message))]
+        message-size (count (str->bytes encoded-message))]
     (if (> message-size max-message-size)
       (throw (Exception. (str "Message is too large to broadcast: "
                               message-size
@@ -113,7 +128,9 @@ the callback will be the screen's :on-network-receive function).
           push (.createSocket context ZMQ/PUSH)
           sub (.createSocket context ZMQ/SUB)]
       {:sender (doto push (.connect send-address))
-       :receiver (doto sub (.connect receive-address) (subscribe! topics))
+       :receiver (doto sub
+                   (.connect receive-address)
+                   (#(apply subscribe! % topics)))
        :thread (doto (Thread. #(client-listen! sub screen-or-fn)) .start)
        :context context})))
 
