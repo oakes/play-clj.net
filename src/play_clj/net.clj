@@ -1,6 +1,6 @@
 (ns play-clj.net
   (:require [clojure.edn :as edn])
-  (:import [org.zeromq ZContext ZMQ])
+  (:import [org.zeromq ZContext ZMQ ZMQ$Socket])
   (:gen-class))
 
 (def ^:private server-send-address "tcp://localhost:4707")
@@ -22,7 +22,7 @@
     obj))
 
 (defn ^:private str->bytes
-  [s]
+  [^String s]
   (.getBytes s ZMQ/CHARSET))
 
 (defn ^:private read-edn
@@ -31,7 +31,7 @@
     (catch Exception _)))
 
 (defn ^:private client-listen!
-  [socket screen-or-fn]
+  [^ZMQ$Socket socket screen-or-fn]
   (try
     (loop []
       (let [topic (.recvStr socket)
@@ -48,7 +48,7 @@
     (catch Exception _)))
 
 (defn ^:private server-listen!
-  [send-socket receive-socket]
+  [^ZMQ$Socket send-socket ^ZMQ$Socket receive-socket]
   (try
     (loop []
       (let [[topic message] (read-edn (.recvStr receive-socket))]
