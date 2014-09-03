@@ -60,6 +60,12 @@
     (.subscribe (get-obj client :network :receiver) (get-bytes (name t)))))
 
 (defn disconnect!
+  "Closes the sockets and interrupts the receiver thread. The `client` is a hash
+map returned by the client function, or a play-clj screen map that contains a
+client hash map associated with the :network key.
+
+    (let [screen (update! screen :network (client screen))]
+      (disconnect! screen))"
   [client]
   (let [context (get-obj client :network :context)]
     (.destroySocket context (get-obj client :network :sender))
@@ -67,6 +73,13 @@
   (.interrupt (get-obj client :network :thread)))
 
 (defn broadcast!
+  "Sends a `message` with the connected server, to be broadcasted to all peers
+subscribed to the `topic`. The `client` is a hash map returned by the client
+function, or a play-clj screen map that contains a client hash map associated
+with the :network key.
+
+    (let [screen (update! screen :network (client screen [:my-game-position]))]
+      (broadcast! screen :my-game-position {:x 10 :y 5}))"
   [client topic message]
   (let [encoded-message (pr-str [topic message])
         message-size (count (get-bytes encoded-message))]
@@ -79,6 +92,14 @@
   nil)
 
 (defn client
+  "Returns a hash map containing sender and receiver sockets, both of which are
+connected to the `send-address` and `receive-address` (localhost by default).
+The receiver socket is also subscribed to the `topics`. The `screen-or-fn` is a
+callback function taking two arguments, or a play-clj screen map (in which case,
+the callback will be the screen's :on-network-receive function).
+
+    (client screen [:my-game-position])
+    (client screen [:my-game-position] \"tcp://localhost:4708\" \"tcp://localhost:4707\")"
   ([screen-or-fn]
     (client screen-or-fn []))
   ([screen-or-fn topics]
@@ -93,6 +114,11 @@
        :context context})))
 
 (defn server
+  "Returns a hash map containing sender and receiver sockets, both of which are
+bound to the `send-address` and `receive-address` (localhost by default).
+
+    (server)
+    (server \"tcp://localhost:4707\" \"tcp://localhost:4708\")"
   ([]
     (server server-send-address server-receive-address))
   ([send-address receive-address]
