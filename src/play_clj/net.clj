@@ -8,8 +8,7 @@
 (def ^:private client-send-address server-receive-address)
 (def ^:private client-receive-address server-send-address)
 
-(def ^:private max-message-size 2048)
-(def ^:private high-water-mark 100)
+(def max-message-size 2048)
 
 (defn ^:private throw-key-not-found
   [k]
@@ -56,15 +55,10 @@
         (.send send-socket (pr-str message))))
     (recur)))
 
-(defn subscribe!
-  [client & topics]
+(defn ^:private subscribe!
+  [client topics]
   (doseq [t topics]
     (.subscribe (get-obj client :network :receiver) (get-bytes t))))
-
-(defn unsubscribe!
-  [client & topics]
-  (doseq [t topics]
-    (.unsubscribe (get-obj client :network :receiver) (get-bytes t))))
 
 (defn disconnect!
   [client]
@@ -94,9 +88,7 @@
           push (.createSocket context ZMQ/PUSH)
           sub (.createSocket context ZMQ/SUB)]
       {:sender (doto push (.connect send-address))
-       :receiver (doto sub
-                   (.connect receive-address)
-                   (#(apply subscribe! % topics)))
+       :receiver (doto sub (.connect receive-address) (subscribe! topics))
        :thread (doto (Thread. #(client-listen! sub screen-or-fn)) .start)
        :context context})))
 
@@ -108,7 +100,6 @@
           pub (.createSocket context ZMQ/PUB)
           pull (.createSocket context ZMQ/PULL)]
       (.setMaxMsgSize pull max-message-size)
-      (.setHWM pull high-water-mark)
       {:sender (doto pub (.bind send-address))
        :receiver (doto pull (.bind receive-address))
        :thread (doto (Thread. #(server-listen! pub pull)) .start)
