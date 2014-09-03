@@ -1,6 +1,6 @@
 (defproject play-clj.net "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "A networking library for play-clj games"
+  :url "https://github.com/oakes/play-clj.net"
   :license {:name "Public Domain"
             :url "http://unlicense.org/UNLICENSE"}
   :dependencies [[org.clojure/clojure "1.6.0"]
