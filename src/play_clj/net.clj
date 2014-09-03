@@ -130,7 +130,7 @@ the callback will be the screen's :on-network-receive function).
       {:sender (doto push (.connect send-address))
        :receiver (doto sub
                    (.connect receive-address)
-                   (#(apply subscribe! % topics)))
+                   ((partial apply subscribe!) topics))
        :thread (doto (Thread. #(client-listen! sub screen-or-fn)) .start)
        :context context})))
 
