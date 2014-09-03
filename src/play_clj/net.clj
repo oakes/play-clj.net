@@ -75,7 +75,7 @@
                               message-size
                               " > "
                               max-message-size)))
-      (.send (get-obj client :network :sender) encoded-message)))
+      (.send (get-obj client :network :sender) encoded-message ZMQ/NOBLOCK)))
   nil)
 
 (defn client
