@@ -32,27 +32,31 @@
 
 (defn ^:private client-listen!
   [socket screen-or-fn]
-  (loop []
-    (let [topic (.recvStr socket)
-          message (read-edn (.recvStr socket))]
-      (when (and topic message)
-        (if (map? screen-or-fn)
-          (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
-                options (get-obj screen-or-fn :options)]
-            (execute-fn! (:on-network-receive options)
-                         :topic (keyword topic)
-                         :message message))
-          (screen-or-fn (keyword topic) message))
-        (recur)))))
+  (try
+    (loop []
+      (let [topic (.recvStr socket)
+            message (read-edn (.recvStr socket))]
+        (when (and topic message)
+          (if (map? screen-or-fn)
+            (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
+                  options (get-obj screen-or-fn :options)]
+              (execute-fn! (:on-network-receive options)
+                           :topic (keyword topic)
+                           :message message))
+            (screen-or-fn (keyword topic) message))
+          (recur))))
+    (catch Exception _)))
 
 (defn ^:private server-listen!
   [send-socket receive-socket]
-  (loop []
-    (let [[topic message] (read-edn (.recvStr receive-socket))]
-      (when (and topic message)
-        (.sendMore send-socket (name topic))
-        (.send send-socket (pr-str message))))
-    (recur)))
+  (try
+    (loop []
+      (let [[topic message] (read-edn (.recvStr receive-socket))]
+        (when (and topic message)
+          (.sendMore send-socket (name topic))
+          (.send send-socket (pr-str message))))
+      (recur))
+    (catch Exception _)))
 
 (defn ^:private subscribe!
   [client topics]
@@ -67,9 +71,9 @@ client hash map associated with the :network key.
     (let [screen (update! screen :network (client screen))]
       (disconnect! screen))"
   [client]
-  (let [context (get-obj client :network :context)]
-    (.destroySocket context (get-obj client :network :sender))
-    (.destroySocket context (get-obj client :network :receiver)))
+  (doto (get-obj client :network :context)
+    (.destroySocket (get-obj client :network :sender))
+    (.destroySocket (get-obj client :network :receiver)))
   (.interrupt (get-obj client :network :thread)))
 
 (defn broadcast!
