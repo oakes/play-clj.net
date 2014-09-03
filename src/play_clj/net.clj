@@ -68,10 +68,11 @@
 
 (defn broadcast!
   [client topic message]
-  (let [encoded-message (pr-str [topic message])]
-    (if (> (count encoded-message) max-message-size)
+  (let [encoded-message (pr-str [topic message])
+        message-size (count (.getBytes encoded-message))]
+    (if (> message-size max-message-size)
       (throw (Exception. (str "Message is too large to broadcast: "
-                              (count encoded-message)
+                              message-size
                               " > "
                               max-message-size)))
       (.send (get-obj client :network :sender) encoded-message)))
