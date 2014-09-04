@@ -49,14 +49,12 @@
 
 (defn ^:private server-listen!
   [^ZMQ$Socket send-socket ^ZMQ$Socket receive-socket]
-  (try
-    (loop []
-      (let [[topic message] (read-edn (.recvStr receive-socket))]
-        (when (and topic message)
-          (.sendMore send-socket (name topic))
-          (.send send-socket (pr-str message))))
-      (recur))
-    (catch Exception _)))
+  (loop []
+    (let [[topic message] (read-edn (.recvStr receive-socket))]
+      (when (and topic message)
+        (.sendMore send-socket (name topic))
+        (.send send-socket (pr-str message))))
+    (recur)))
 
 (defn subscribe!
   "Subscribes `client` the given `topics`. The `client` is a hash map returned
