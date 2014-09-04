@@ -151,6 +151,6 @@ bound to the `send-address` and `receive-address` (* by default).
        :thread (doto (Thread. #(server-listen! pub pull)) .start)
        :context context})))
 
-(defn -main
+(defn ^:private -main
   [& args]
   (server))
