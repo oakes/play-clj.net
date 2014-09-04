@@ -52,7 +52,7 @@ Note that there is no support for direct connections between peers; you can only
         (label (:message screen) (color :white)))))
   
   ; Disconnects from the server when you switch away from the screen.
-  :on-dispose
+  :on-hide
   (fn [screen entities]
     (disconnect! screen)))
 
