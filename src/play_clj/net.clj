@@ -3,10 +3,10 @@
   (:import [org.zeromq ZContext ZMQ ZMQ$Socket])
   (:gen-class))
 
-(def ^:private server-send-address "tcp://localhost:4707")
-(def ^:private server-receive-address "tcp://localhost:4708")
-(def ^:private client-send-address server-receive-address)
-(def ^:private client-receive-address server-send-address)
+(def ^:private client-send-address "tcp://localhost:4707")
+(def ^:private client-receive-address "tcp://localhost:4708")
+(def ^:private server-send-address "tcp://*:4708")
+(def ^:private server-receive-address "tcp://*:4707")
 (def ^:private max-message-size 2048)
 
 (defn ^:private throw-key-not-found
@@ -116,7 +116,8 @@ callback function taking two arguments, or a play-clj screen map (in which case,
 the callback will be the screen's :on-network-receive function).
 
     (client screen [:my-game-position])
-    (client screen [:my-game-position] \"tcp://localhost:4708\" \"tcp://localhost:4707\")"
+    (client screen [:my-game-position]
+            \"tcp://localhost:4707\" \"tcp://localhost:4708\")"
   ([screen-or-fn]
     (client screen-or-fn []))
   ([screen-or-fn topics]
@@ -134,10 +135,10 @@ the callback will be the screen's :on-network-receive function).
 
 (defn server
   "Returns a hash map containing sender and receiver sockets, both of which are
-bound to the `send-address` and `receive-address` (localhost by default).
+bound to the `send-address` and `receive-address` (* by default).
 
     (server)
-    (server \"tcp://localhost:4707\" \"tcp://localhost:4708\")"
+    (server \"tcp://*:4708\" \"tcp://*:4707\")"
   ([]
     (server server-send-address server-receive-address))
   ([send-address receive-address]
