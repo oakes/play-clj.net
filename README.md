@@ -26,7 +26,7 @@ Note that there is no support for direct connections between peers; you can only
   (fn [screen entities]
     (update! screen
              :renderer (stage)
-             ; Creates a networking client that subscribes to the :test topic.
+             ; Creates a networking client that subscribes to the :hello-world-test topic.
              ; No addresses are specified, so it will use localhost.
              :network (client screen [:hello-world-test]))
     (label "Hello world!" (color :white)))
@@ -62,7 +62,7 @@ Note that there is no support for direct connections between peers; you can only
     (set-screen! this main-screen)))
 ```
 
-If you want to try a public server, create your networking client like this:
+If you want to try a public server instead of your local one, create your networking client like this:
 
 ```clojure
 (client screen
@@ -74,6 +74,8 @@ If you want to try a public server, create your networking client like this:
 This will use a public server I am running. You are welcome to use it, but there are no guarantees about uptime. Running your own server is easy! Just clone this repo on a server, run `lein uberjar`, and then `java -jar target/play-clj.net-...-standalone.jar &`.
 
 ## Getting Started (without play-clj)
+
+While this library was meant for play-clj, it doesn't require it.
 
 1. Clone this project and run `lein run` to run the server
 2. Create a new project with `lein new app hello-world`
