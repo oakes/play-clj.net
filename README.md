@@ -2,7 +2,7 @@
 
 A library for painlessly adding networking support to play-clj games. Try the [example game](https://github.com/oakes/play-clj-examples/tree/master/minicraft-online). It uses the publish-subscribe mechanism in [JeroMQ](https://github.com/zeromq/jeromq), a pure Java implementation of ZeroMQ.
 
-To use it, you subscribe to "topics", which are simply keywords like `:test`. When you broadcast a message to a topic, anyone subscribed to that topic will receive it. Thus, it's a good idea to make the topic names unique, like `:hello-world-test`.
+To use it, you subscribe to "topics", which are simply keywords like `:test`. When you broadcast a message to a topic, anyone subscribed to that topic will receive it. Thus, it's a good idea to make the topic names unique to your game, if multiple games are using the same server.
 
 Note that there is no support for direct connections between peers; you can only broadcast messages to a topic. If you subscribe to a topic you broadcast to, you will receive your own packets.
 
@@ -26,8 +26,9 @@ Note that there is no support for direct connections between peers; you can only
   (fn [screen entities]
     (update! screen
              :renderer (stage)
-             ; Creates a networking client that subscribes to the :hello-world-test topic.
-             ; No addresses are specified, so it will use localhost.
+             ; Creates a networking client that subscribes to the
+             ; :hello-world-test topic. No addresses are specified,
+             ; so it will use localhost.
              :network (client screen [:hello-world-test]))
     (label "Hello world!" (color :white)))
   
@@ -44,6 +45,8 @@ Note that there is no support for direct connections between peers; you can only
     (broadcast! screen :hello-world-test "Hello internet!"))
   
   ; Runs when you receive a message for a topic you're subscribed to.
+  ; In this simple example, the :message is a string, but for complicated
+  ; data structures, you may want to use Prismatic Schema to validate them.
   :on-network-receive
   (fn [screen entities]
     (case (:topic screen)
