@@ -4,7 +4,7 @@ A library for painlessly adding networking support to play-clj games. Try the [e
 
 To use it, you subscribe to "topics", which are simply keywords like `:test`. When you broadcast a message to a topic, anyone subscribed to that topic will receive it. Thus, it's a good idea to make the topic names unique to your game, if multiple games are using the same server.
 
-Note that there is no support for direct connections between peers; you can only broadcast messages to a topic. If you subscribe to a topic you broadcast to, you will receive your own packets.
+There is no support for direct connections between peers; you can only broadcast messages to a topic. If you subscribe to a topic you broadcast to, you will receive your own messages. Messages can be anything that can be encoded and decoded in the edn format.
 
 ## Getting Started (with play-clj)
 
@@ -45,7 +45,7 @@ Note that there is no support for direct connections between peers; you can only
     (broadcast! screen :hello-world-test "Hello internet!"))
   
   ; Runs when you receive a message for a topic you're subscribed to.
-  ; In this simple example, the :message is a string, but for complicated
+  ; In this simple example, the message is a string, but for complicated
   ; data structures, you may want to use Prismatic Schema to validate them.
   :on-network-receive
   (fn [screen entities]
