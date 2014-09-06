@@ -1,12 +1,12 @@
 ## Introduction
 
-A library for painlessly adding networking support to play-clj games. Try the [example game](https://github.com/oakes/play-clj-examples/tree/master/minicraft-online). It uses the publish-subscribe mechanism in [JeroMQ](https://github.com/zeromq/jeromq), a pure Java implementation of ZeroMQ.
+A library for painlessly adding networking support to play-clj games. It uses the publish-subscribe mechanism in [JeroMQ](https://github.com/zeromq/jeromq), a pure Java implementation of ZeroMQ. Try the [example game](https://github.com/oakes/play-clj-examples/tree/master/minicraft-online).
 
-To use it, you subscribe to "topics", which are simply keywords like `:test`. When you broadcast a message to a topic, anyone subscribed to that topic will receive it. Thus, it's a good idea to make the topic names unique to your game, if multiple games are using the same server.
+To use it, you subscribe to "topics", which are simply keywords like `:update-position`. When you broadcast a message to a topic, anyone subscribed to that topic will receive it. Thus, it's a good idea to make the topic names unique to your game, if multiple games are using the same server.
 
 There is no support for direct connections between peers; you can only broadcast messages to a topic. If you subscribe to a topic you broadcast to, you will receive your own messages. Messages can be anything that can be encoded and decoded in the edn format.
 
-## Getting Started (with play-clj)
+## Getting Started
 
 1. Clone this project and run `lein run` to run the server
 2. Create a new project with `lein new play-clj hello-world`
@@ -65,7 +65,9 @@ There is no support for direct connections between peers; you can only broadcast
     (set-screen! this main-screen)))
 ```
 
-If you want to try a public server instead of your local one, create your networking client like this:
+## Connecting to a Server
+
+If you want to use a public server instead of your local one, create your networking client like this:
 
 ```clojure
 (client screen
@@ -74,7 +76,11 @@ If you want to try a public server instead of your local one, create your networ
         "tcp://play-clj.net:4708")
 ```
 
-This will use a public server I am running. You are welcome to use it, but there are no guarantees about uptime. Running your own server is easy! Just clone this repo on a server, run `lein uberjar`, and then `java -jar target/play-clj.net-...-standalone.jar &`.
+This will use a public server I am running. You are welcome to use it, but there are no guarantees about uptime. Running your own server is easy:
+
+1. Clone this repo on a server and cd into it
+2. `lein uberjar`
+3. `java -jar target/play-clj.net-...-standalone.jar &`
 
 ## Getting Started (without play-clj)
 
