@@ -10,9 +10,8 @@ There is no support for direct connections between peers; you can only broadcast
 
 1. Clone this project and run `lein run` to run the server
 2. Create a new project with `lein new play-clj hello-world`
-3. Modify `desktop/project.clj` to use these dependencies:
- - [play-clj "0.3.11-SNAPSHOT"]
- - [play-clj.net "0.1.0-SNAPSHOT"]
+3. Modify `desktop/project.clj` to use this dependency:
+ - [play-clj.net "0.1.0"]
 4. Modify `desktop/src-common/hello_world/core.clj` to look like this:
 
 ```clojure
@@ -89,7 +88,7 @@ While this library was meant for play-clj, it doesn't require it.
 1. Clone this project and run `lein run` to run the server
 2. Create a new project with `lein new app hello-world`
 3. Modify `desktop/project.clj` to use this dependency:
- - [play-clj.net "0.1.0-SNAPSHOT"]
+ - [play-clj.net "0.1.0"]
 4. Modify `src/hello_world/core.clj` to look like this:
 
 ```clojure
