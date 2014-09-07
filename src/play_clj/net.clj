@@ -50,7 +50,7 @@ hash map associated with the :network key.
     (.unsubscribe (u/get-obj screen :network :receiver) (u/str->bytes t))))
 
 (defn disconnect!
-  "Closes the sockets and interrupts the receiver thread. The `client` is a hash
+  "Closes the sockets and interrupts the receiver thread. The `screen` is a hash
 map returned by the client function, or a play-clj screen map that contains a
 client hash map associated with the :network key.
 
