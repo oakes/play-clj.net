@@ -1,4 +1,4 @@
-(defproject play-clj.net "0.1.1-SNAPSHOT"
+(defproject play-clj.net "0.1.1"
   :description "A networking library for play-clj games"
   :url "https://github.com/oakes/play-clj.net"
   :license {:name "Public Domain"
