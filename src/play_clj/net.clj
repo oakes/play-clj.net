@@ -1,80 +1,53 @@
 (ns play-clj.net
-  (:require [clojure.edn :as edn])
+  (:require [play-clj.net-utils :as u])
   (:import [org.zeromq ZContext ZMQ ZMQ$Socket])
   (:gen-class))
 
-(def ^:private client-send-address "tcp://localhost:4707")
-(def ^:private client-receive-address "tcp://localhost:4708")
-(def ^:private server-send-address "tcp://*:4708")
-(def ^:private server-receive-address "tcp://*:4707")
-(def ^:private max-message-size 1024)
-
-(defn ^:private throw-key-not-found
-  [k]
-  (throw (Exception. (str "The keyword " k " is not found."))))
-
-(defn ^:private get-obj
-  [obj & ks]
-  (if (map? obj)
-    (or (get-in obj ks)
-        (get obj (last ks))
-        (throw-key-not-found (last ks)))
-    obj))
-
-(defn ^:private str->bytes
-  [^String s]
-  (.getBytes s ZMQ/CHARSET))
-
-(defn ^:private read-edn
-  [s]
-  (try (edn/read-string s)
-    (catch Exception _)))
-
 (defn ^:private client-listen!
-  [^ZMQ$Socket socket screen-or-fn]
+  [^ZMQ$Socket socket screen]
   (try
     (loop []
       (let [topic (.recvStr socket)
-            message (read-edn (.recvStr socket))]
+            message (u/read-edn (.recvStr socket))]
         (when (and topic message)
-          (if (map? screen-or-fn)
-            (let [execute-fn! (get-obj screen-or-fn :execute-fn-on-gl!)
-                  options (get-obj screen-or-fn :options)]
+          (if (map? screen)
+            (let [execute-fn! (u/get-obj screen :execute-fn-on-gl!)
+                  options (u/get-obj screen :options)]
               (execute-fn! (:on-network-receive options)
                            :topic (keyword topic)
                            :message message))
-            (screen-or-fn (keyword topic) message))
+            (screen (keyword topic) message))
           (recur))))
     (catch Exception _)))
 
 (defn ^:private server-listen!
   [^ZMQ$Socket send-socket ^ZMQ$Socket receive-socket]
   (loop []
-    (let [[topic message] (read-edn (.recvStr receive-socket))]
+    (let [[topic message] (u/read-edn (.recvStr receive-socket))]
       (when (and topic message)
         (.sendMore send-socket (name topic))
         (.send send-socket (pr-str message))))
     (recur)))
 
 (defn subscribe!
-  "Subscribes `client` the given `topics`. The `client` is a hash map returned
+  "Subscribes the client the given `topics`. The `screen` is a hash map returned
 by the client function, or a play-clj screen map that contains a client hash map
 associated with the :network key.
 
     (subscribe! screen :my-game-level-2)"
-  [client & topics]
+  [screen & topics]
   (doseq [t topics]
-    (.subscribe (get-obj client :network :receiver) (str->bytes (name t)))))
+    (.subscribe (u/get-obj screen :network :receiver) (u/str->bytes (name t)))))
 
 (defn unsubscribe!
-  "Unsubscribes `client` the given `topics`. The `client` is a hash map returned
-by the client function, or a play-clj screen map that contains a client hash map
-associated with the :network key.
+  "Unsubscribes the client the given `topics`. The `screen` is a hash map
+returned by the client function, or a play-clj screen map that contains a client
+hash map associated with the :network key.
 
     (unsubscribe! screen :my-game-level-2)"
-  [client & topics]
+  [screen & topics]
   (doseq [t topics]
-    (.unsubscribe (get-obj client :network :receiver) (str->bytes t))))
+    (.unsubscribe (u/get-obj screen :network :receiver) (u/str->bytes t))))
 
 (defn disconnect!
   "Closes the sockets and interrupts the receiver thread. The `client` is a hash
@@ -83,55 +56,61 @@ client hash map associated with the :network key.
 
     (let [screen (update! screen :network (client screen))]
       (disconnect! screen))"
-  [client]
-  (doto (get-obj client :network :context)
-    (.destroySocket (get-obj client :network :sender))
-    (.destroySocket (get-obj client :network :receiver)))
-  (.interrupt (get-obj client :network :thread)))
+  [screen]
+  ; destroy the send and receive sockets
+  (doto (u/get-obj screen :network :context)
+    (.destroySocket (u/get-obj screen :network :sender))
+    (.destroySocket (u/get-obj screen :network :receiver)))
+  ; stop the thread
+  (.interrupt (u/get-obj screen :network :thread))
+  ; remove from the networks atom if it exists
+  (some-> u/*networks* (swap! dissoc (or (:network screen) screen))))
 
 (defn broadcast!
   "Sends a `message` with the connected server, to be broadcasted to all peers
-subscribed to the `topic`. The `client` is a hash map returned by the client
+subscribed to the `topic`. The `screen` is a hash map returned by the client
 function, or a play-clj screen map that contains a client hash map associated
 with the :network key.
 
     (let [screen (update! screen :network (client screen [:my-game-position]))]
       (broadcast! screen :my-game-position {:x 10 :y 5}))"
-  [client topic message]
+  [screen topic message]
   (let [encoded-message (pr-str [topic message])
-        message-size (count (str->bytes encoded-message))]
-    (if (> message-size max-message-size)
+        message-size (count (u/str->bytes encoded-message))]
+    (if (> message-size u/max-message-size)
       (throw (Exception. (str "Message is too large to broadcast: "
-                              message-size
-                              " > "
-                              max-message-size)))
-      (.send (get-obj client :network :sender) encoded-message ZMQ/NOBLOCK)))
+                              message-size " > " u/max-message-size)))
+      (.send (u/get-obj screen :network :sender) encoded-message ZMQ/NOBLOCK)))
   nil)
 
 (defn client
   "Returns a hash map containing sender and receiver sockets, both of which are
 connected to the `send-address` and `receive-address` (localhost by default).
-The receiver socket is also subscribed to the `topics`. The `screen-or-fn` is a
+The receiver socket is also subscribed to the `topics`. The `screen` is a
 callback function taking two arguments, or a play-clj screen map (in which case,
 the callback will be the screen's :on-network-receive function).
 
     (client screen [:my-game-position])
     (client screen [:my-game-position]
             \"tcp://localhost:4707\" \"tcp://localhost:4708\")"
-  ([screen-or-fn]
-    (client screen-or-fn []))
-  ([screen-or-fn topics]
-    (client screen-or-fn topics client-send-address client-receive-address))
-  ([screen-or-fn topics send-address receive-address]
+  ([screen]
+    (client screen []))
+  ([screen topics]
+    (client screen topics u/client-send-address u/client-receive-address))
+  ([screen topics send-address receive-address]
     (let [context (ZContext.)
           push (.createSocket context ZMQ/PUSH)
-          sub (.createSocket context ZMQ/SUB)]
-      {:sender (doto push (.connect send-address))
-       :receiver (doto sub
-                   (.connect receive-address)
-                   ((partial apply subscribe!) topics))
-       :thread (doto (Thread. #(client-listen! sub screen-or-fn)) .start)
-       :context context})))
+          sub (.createSocket context ZMQ/SUB)
+          c {:sender (doto push (.connect send-address))
+             :receiver (doto sub
+                         (.connect receive-address)
+                         ((partial apply subscribe!) topics))
+             :thread (doto (Thread. #(client-listen! sub screen)) .start)
+             :context context}]
+      ; add to the networks atom if it exists
+      (some-> u/*networks* (swap! assoc c #(disconnect! c)))
+      ; return client
+      c)))
 
 (defn server
   "Returns a hash map containing sender and receiver sockets, both of which are
@@ -140,16 +119,20 @@ bound to the `send-address` and `receive-address` (* by default).
     (server)
     (server \"tcp://*:4708\" \"tcp://*:4707\")"
   ([]
-    (server server-send-address server-receive-address))
+    (server u/server-send-address u/server-receive-address))
   ([send-address receive-address]
     (let [context (ZContext.)
           pub (.createSocket context ZMQ/PUB)
-          pull (.createSocket context ZMQ/PULL)]
-      (.setMaxMsgSize pull max-message-size)
-      {:sender (doto pub (.bind send-address))
-       :receiver (doto pull (.bind receive-address))
-       :thread (doto (Thread. #(server-listen! pub pull)) .start)
-       :context context})))
+          pull (.createSocket context ZMQ/PULL)
+          _ (.setMaxMsgSize pull u/max-message-size)
+          s {:sender (doto pub (.bind send-address))
+             :receiver (doto pull (.bind receive-address))
+             :thread (doto (Thread. #(server-listen! pub pull)) .start)
+             :context context}]
+      ; add to the networks atom if it exists
+      (some-> u/*networks* (swap! assoc s #(disconnect! s)))
+      ; return server
+      s)))
 
 (defn ^:private -main
   [& args]
