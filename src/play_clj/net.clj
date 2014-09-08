@@ -64,7 +64,8 @@ client hash map associated with the :network key.
   ; stop the thread
   (.interrupt (u/get-obj screen :network :thread))
   ; remove from the networks atom if it exists
-  (some-> u/*networks* (swap! dissoc (or (:network screen) screen))))
+  (some-> u/*networks* (swap! dissoc (or (:network screen) screen)))
+  nil)
 
 (defn broadcast!
   "Sends a `message` with the connected server, to be broadcasted to all peers
