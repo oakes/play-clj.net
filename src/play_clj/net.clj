@@ -30,9 +30,8 @@
     (recur)))
 
 (defn subscribe!
-  "Subscribes the client the given `topics`. The `screen` is a hash map returned
-by the client function, or a play-clj screen map that contains a client hash map
-associated with the :network key.
+  "Subscribes the client the given `topics`. The `screen` is a play-clj screen
+map that contains a client hash map associated with the :network key.
 
     (subscribe! screen :my-game-level-2)"
   [screen & topics]
@@ -40,9 +39,8 @@ associated with the :network key.
     (.subscribe (u/get-obj screen :network :receiver) (u/str->bytes (name t)))))
 
 (defn unsubscribe!
-  "Unsubscribes the client the given `topics`. The `screen` is a hash map
-returned by the client function, or a play-clj screen map that contains a client
-hash map associated with the :network key.
+  "Unsubscribes the client the given `topics`. The `screen` is a play-clj screen
+map that contains a client hash map associated with the :network key.
 
     (unsubscribe! screen :my-game-level-2)"
   [screen & topics]
@@ -50,9 +48,9 @@ hash map associated with the :network key.
     (.unsubscribe (u/get-obj screen :network :receiver) (u/str->bytes t))))
 
 (defn disconnect!
-  "Closes the sockets and interrupts the receiver thread. The `screen` is a hash
-map returned by the client function, or a play-clj screen map that contains a
-client hash map associated with the :network key.
+  "Closes the sockets and interrupts the receiver thread. The `screen` is a
+play-clj screen map that contains a client hash map associated with the :network
+key.
 
     (let [screen (update! screen :network (client screen))]
       (disconnect! screen))"
@@ -69,9 +67,8 @@ client hash map associated with the :network key.
 
 (defn broadcast!
   "Sends a `message` with the connected server, to be broadcasted to all peers
-subscribed to the `topic`. The `screen` is a hash map returned by the client
-function, or a play-clj screen map that contains a client hash map associated
-with the :network key.
+subscribed to the `topic`. The `screen` is a play-clj screen map that contains a
+client hash map associated with the :network key.
 
     (let [screen (update! screen :network (client screen [:my-game-position]))]
       (broadcast! screen :my-game-position {:x 10 :y 5}))"
@@ -86,10 +83,9 @@ with the :network key.
 
 (defn client
   "Returns a hash map containing sender and receiver sockets, both of which are
-connected to the `send-address` and `receive-address` (localhost by default).
-The receiver socket is also subscribed to the `topics`. The `screen` is a
-callback function taking two arguments, or a play-clj screen map (in which case,
-the callback will be the screen's :on-network-receive function).
+connected to the `send-address` and `receive-address`. The receiver socket is
+also subscribed to the `topics`. The `screen` is a play-clj screen map, whose
+:on-network-receive function will run when a message is received.
 
     (client screen [:my-game-position])
     (client screen [:my-game-position]
@@ -115,7 +111,7 @@ the callback will be the screen's :on-network-receive function).
 
 (defn server
   "Returns a hash map containing sender and receiver sockets, both of which are
-bound to the `send-address` and `receive-address` (* by default).
+bound to the `send-address` and `receive-address`.
 
     (server)
     (server \"tcp://*:4708\" \"tcp://*:4707\")"
