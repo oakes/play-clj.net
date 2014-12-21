@@ -71,11 +71,11 @@ If you want to use a public server instead of your local one, create your networ
 ```clojure
 (client screen
         [:hello-world-test]
-        "tcp://play-clj.net:4707"
-        "tcp://play-clj.net:4708")
+        "tcp://IP_ADDRESS:4707"
+        "tcp://IP_ADDRESS:4708")
 ```
 
-This will use a public server I am running. You are welcome to use it, but there are no guarantees about uptime. Running your own server is easy:
+Running your own server is easy:
 
 1. Clone this repo on a server and cd into it
 2. `lein uberjar`
